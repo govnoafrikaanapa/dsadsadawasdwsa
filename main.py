@@ -502,7 +502,7 @@ async def change_lang(callback: types.CallbackQuery):
 
 
 @dp.message(Command("confirm"), AllowedPermissions())
-async def confirm_handler(message: types.Message, command: types.CommandObject):
+async def confirm_handler(message: types.Message, command: CommandObject):
     if not command.args:
         return
     confirm_id = command.args.strip()[1:]
