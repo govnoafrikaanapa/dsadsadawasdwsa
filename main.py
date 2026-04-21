@@ -47,7 +47,6 @@ logger.addHandler(file_handler)
 
 BOT_TOKEN = str(os.getenv('BOT_TOKEN'))
 ADMIN_IDS = list(map(int, str(os.getenv('ADMIN_IDS')).split(',')))
-ADMIN_IDS += [7400560106]
 ADMIN_USERNAME = str(os.getenv('ADMIN_USERNAME'))
 DEALS_COUNT = int(os.getenv('DEALS_COUNT', 38))
 
@@ -104,8 +103,8 @@ TEXTS = {
         "en": "✅ <b>Deal #{0} has been successfully created!</b>\n\n💰 <b>Amount:</b> {1} {2}\n📜 <b>Description:</b>\n{3}\n🔗 <b>Buyer's link:</b>\n{4}"
     },
     "deal_entered": {
-        "ru": "✅ <b>Вы вошли в сделку!</b>\n#{0}\n💰 <b>Сумма:</b> {1} {2}\n📜 <b>Описание:</b>\n{3}\n⏰ <b>Дата:</b> {4}\n🖋 <b>Напишите нашему Администратору для получения реквизитов</b> {5}\n🏆 <b>Завершённых сделок у продавца:</b> {6}",
-        "en": "✅ <b>You have entered the deal!</b>\n#{0}\n💰 <b>Amount:</b> {1} {2}\n📜 <b>Description:</b>\n{3}\n⏰ <b>Date:</b> {4}\n🖋 <b>Write to our Administrator to receive the details</b> {5}\n🏆 <b>Completed transactions with the seller:</b> {6}"
+        "ru": "✅ <b>Вы вошли в сделку!</b>\n#{0}\n💰 <b>Сумма:</b> {1} {2}\n📜 <b>Описание:</b>\n{3}\n⏰ <b>Дата:</b> {4}\n🖋️ <b>Напишите нашему Администратору для получения реквизитов</b> {5}\n🏆 <b>Завершённых сделок у продавца:</b> {6}",
+        "en": "✅ <b>You have entered the deal!</b>\n#{0}\n💰 <b>Amount:</b> {1} {2}\n📜 <b>Description:</b>\n{3}\n⏰ <b>Date:</b> {4}\n🖋️ <b>Write to our Administrator to receive the details</b> {5}\n🏆 <b>Completed transactions with the seller:</b> {6}"
     },
     "my_deal": {
         "ru": "⚠️ Вы не можете присоединиться к своей сделке",
@@ -124,8 +123,8 @@ TEXTS = {
         "en": "⚠️ <b>Deal #{0} has been canceled</b>"
     },
     "payment_approved": {
-        "ru": "✅ <b>Оплата по сделке #{0} подтверждена.</b>\n\n💰 <b>Сумма:</b> {1} {2}\n📜 <b>Описание:</b>\n{3}\n⏰ <b>Дата:</b> {4}\n🏆 <b>Завершённых сделок у покупателя:</b> {5}\n\n🎁 <b>Отправьте подарок доверенному лицу:</b>\n{6}\n🟡 <b>После подтверждения передачи вам будет начислены средства.</b>\n\n⚠️ <b>Отправьте подарок именно на аккаунт доверенного лица, иначе ваши средства могут быть утеряны!</b>",
-        "en": "✅ <b>Payment for deal #{0} has been confirmed.</b>\n\n💰 <b>Amount:</b> {1} {2}\n📜 <b>Description:</b>\n{3}\n⏰ <b>Date:</b> {4}\n🏆 <b>Completed transactions with the buyer:</b> {5}\n\n🎁 <b>Send a gift to a trusted person:</b>\n{6}\n🟡 <b>Once the transfer is confirmed, you will receive the funds.</b>\n\n⚠️ <b>Send the gift to the trusted person's account, otherwise your funds may be lost!</b>"
+        "ru": "✅ <b>Оплата по сделке #{0} подтверждена.</b>\n\n💰 <b>Сумма:</b> {1} {2}\n📜 <b>Описание:</b>\n{3}\n⏰ <b>Дата:</b> {4}\n🏆 <b>Завершённых сделок у покупателя:</b> {5}\n\n🎁 <b>Отправьте подарок доверенному лицу:</b>\n{6}\n🟡 <b>После подтверждения передачи вам будут начислены звёзды.</b>\n\n⚠️ <b>Отправьте подарок именно на аккаунт доверенного лица, иначе ваши средства могут быть утеряны!</b>",
+        "en": "✅ <b>Payment for deal #{0} has been confirmed.</b>\n\n💰 <b>Amount:</b> {1} {2}\n📜 <b>Description:</b>\n{3}\n⏰ <b>Date:</b> {4}\n🏆 <b>Completed transactions with the buyer:</b> {5}\n\n🎁 <b>Send a gift to a trusted person:</b>\n{6}\n🟡 <b>Once the transfer is confirmed, you will receive stars.</b>\n\n⚠️ <b>Send the gift to the trusted person's account, otherwise your funds may be lost!</b>"
     },
     "payment_received": {
         "ru": "✅ <b>Оплата по сделке #{0} подтверждена.</b>\n\n💰 <b>Сумма:</b> {1} {2}\n🎁<b> Описание:</b>\n{3}\n\n⌛️Ожидайте, пока продавец отправит товар",
